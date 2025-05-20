@@ -79,7 +79,8 @@ class Pipeline {
         seed: UInt32 = 0,
         numPreviews previewCount: Int = 5,
         guidanceScale: Float = 7.5,
-        disableSafety: Bool = false
+        disableSafety: Bool = false,
+        imageSize: CGSize = CGSize(width: 512, height: 512)
     ) throws -> GenerationResult {
         let beginDate = Date()
         canceled = false
@@ -107,7 +108,7 @@ class Pipeline {
             config.decoderShiftFactor = 0.0609
             config.schedulerTimestepShift = 3.0
         }
-
+        config.targetSize = Float32(imageSize.width)
         // Evenly distribute previews based on inference steps
         let previewIndices = previewIndices(stepCount, previewCount)
 

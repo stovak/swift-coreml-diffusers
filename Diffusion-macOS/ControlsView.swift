@@ -19,6 +19,26 @@ enum PipelineState {
     case failed(Error)
 }
 
+
+enum AspectRatio: String, CaseIterable, Identifiable, Hashable {
+    case fourThree = "4:3"
+    case sixteenNine = "16:9"
+    case nineSixteen = "9:16"
+
+    var id: String { self.rawValue }
+
+    var size: CGSize {
+        switch self {
+        case .fourThree:
+            return CGSize(width: 512, height: 384)  // or 768x576, etc.
+        case .sixteenNine:
+            return CGSize(width: 512, height: 288)
+        case .nineSixteen:
+            return CGSize(width: 288, height: 512)
+        }
+    }
+}
+
 /// Mimics the native appearance, but labels are clickable.
 /// To be removed (adding gestures to all labels) if we observe any UI shenanigans.
 struct LabelToggleDisclosureGroupStyle: DisclosureGroupStyle {
@@ -59,6 +79,7 @@ struct ControlsView: View {
     @State private var disclosedPreview = false
     @State private var disclosedSeed = false
     @State private var disclosedAdvanced = false
+    @State private var disclosedImageControls = false
 
     // TODO: refactor download with similar code in Loading.swift (iOS)
     @State private var stateSubscriber: Cancellable?
@@ -78,6 +99,7 @@ struct ControlsView: View {
     @State private var showAdvancedHelp = false
     @State private var positiveTokenCount: Int = 0
     @State private var negativeTokenCount: Int = 0
+    @State private var selectedAspectRatio: AspectRatio = AspectRatio.fourThree
 
     let maxSeed: UInt32 = UInt32.max
     private var textFieldLabelSeed: String { generation.seed < 1 ? "Random Seed" : "Seed" }
@@ -154,10 +176,15 @@ struct ControlsView: View {
         PipelineLoader(model: model, computeUnits: computeUnits ?? generation.computeUnits).ready
     }
     
-    fileprivate func modelLabel(_ model: ModelInfo) -> Text {
+    fileprivate func modelLabel(_ model: ModelInfo) -> some View {
         let downloaded = isModelDownloaded(model)
         let prefix = downloaded ? "● " : "◌ "  //"○ "
-        return Text(prefix).foregroundColor(downloaded ? .accentColor : .secondary) + Text(model.modelVersion)
+        return AnyView(
+            HStack {
+                Text(prefix).foregroundColor(downloaded ? .accentColor : .secondary)
+                Text(model.modelVersion)
+            }
+        )
     }
     
     fileprivate func prompts() -> some View {
@@ -192,8 +219,8 @@ struct ControlsView: View {
                     DisclosureGroup(isExpanded: $disclosedModel) {
                         let revealOption = "-- reveal --"
                         Picker("", selection: $model) {
-                            ForEach(Self.models, id: \.modelVersion) {
-                                modelLabel($0)
+                            ForEach(Self.models, id: \.modelVersion) { model in
+                                modelLabel(model).tag(model.modelVersion)
                             }
                             Text("Reveal in Finder…").tag(revealOption)
                         }
@@ -250,7 +277,7 @@ struct ControlsView: View {
                         }.foregroundColor(.secondary)
                     }
                     Divider()
-
+                    
                     let guidanceScaleValue = generation.guidanceScale.formatted("%.1f")
                     DisclosureGroup(isExpanded: $disclosedGuidance) {
                         CompactSlider(value: $generation.guidanceScale, in: 0...20, step: 0.5) {
@@ -282,7 +309,7 @@ struct ControlsView: View {
                             }
                         }.foregroundColor(.secondary)
                     }
-
+                    
                     DisclosureGroup(isExpanded: $disclosedSteps) {
                         CompactSlider(value: $generation.steps, in: 1...150, step: 1) {
                             Text("Steps")
@@ -312,7 +339,32 @@ struct ControlsView: View {
                             }
                         }.foregroundColor(.secondary)
                     }
+                    DisclosureGroup(isExpanded: $disclosedImageControls) {
+                        Picker("Aspect Ratio", selection: $selectedAspectRatio) {
+                            ForEach(AspectRatio.allCases, id: \.self) { ratio in
+                                Text(ratio.rawValue).tag(ratio as AspectRatio)
+                            }
+                        }.pickerStyle(.segmented)
 
+                    } label: {
+                        HStack {
+                            Label("Image Controls").foregroundColor(.secondary)
+                            Spacer()
+                            if disclosedPreview {
+                                Button {
+                                    showPreviewHelp.toggle()
+                                } label: {
+                                    Image(systemName: "info.circle")
+                                }
+                                .buttonStyle(.plain)
+                                .popover(isPresented: $showPreviewHelp, arrowEdge: .trailing) {
+                                    previewHelp($showPreviewHelp)
+                                }
+                            } else {
+                                Text("\(Int(generation.previews))")
+                            }
+                        }.foregroundColor(.secondary)
+                    }
                     DisclosureGroup(isExpanded: $disclosedPreview) {
                         CompactSlider(value: $generation.previews, in: 0...25, step: 1) {
                             Text("Previews")
