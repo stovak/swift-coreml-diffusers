@@ -99,7 +99,8 @@ struct ControlsView: View {
     @State private var showAdvancedHelp = false
     @State private var positiveTokenCount: Int = 0
     @State private var negativeTokenCount: Int = 0
-    @State private var selectedAspectRatio: AspectRatio = AspectRatio.fourThree
+    // 16:9 should be the default aspect ratio for storyboards
+    @State private var selectedAspectRatio: AspectRatio = AspectRatio.sixteenNine
 
     let maxSeed: UInt32 = UInt32.max
     private var textFieldLabelSeed: String { generation.seed < 1 ? "Random Seed" : "Seed" }
@@ -342,7 +343,7 @@ struct ControlsView: View {
                     DisclosureGroup(isExpanded: $disclosedImageControls) {
                         Picker("Aspect Ratio", selection: $selectedAspectRatio) {
                             ForEach(AspectRatio.allCases, id: \.self) { ratio in
-                                Text(ratio.rawValue).tag(ratio as AspectRatio)
+                                Text(ratio.text).tag(ratio as AspectRatio)
                             }
                         }.pickerStyle(.segmented)
 
